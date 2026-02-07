@@ -8,7 +8,7 @@ type ErrorResponse struct {
 
 type ErrorDetail struct {
 	Code    string `json:"code"`
-	Message string `json:"message`
+	Message string `json:"message"`
 }
 
 func RespondError(c *gin.Context, status int, code, message string) {

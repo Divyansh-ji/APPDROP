@@ -2,6 +2,7 @@ package main
 
 import (
 	"APPDROP/db"
+	"APPDROP/routes"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -16,6 +17,8 @@ func main() {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	log.Println("🚀 Server running on port 8080")
+	routes.RegisterRoutes(r)
+
+	log.Println(" Server running on port 8082")
 	r.Run(":8082")
 }
