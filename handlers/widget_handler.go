@@ -51,7 +51,7 @@ func UpdateWidget(c *gin.Context) {
 	}
 
 	var widget models.Widget
-	if err := db.DB.First(&widget, "id =?", widgetID).Error; err != nil {
+	if err := db.DB.First(&widget, "id = ?", widgetID).Error; err != nil {
 		RespondError(c, http.StatusNotFound, "NOT_FOUND", "Widget not found")
 		return
 	}
@@ -62,7 +62,7 @@ func UpdateWidget(c *gin.Context) {
 
 	if !allowedWidgetTypes[widget.Type] {
 		RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid widget type")
-
+		return
 	}
 	if err := db.DB.Save(&widget).Error; err != nil {
 		RespondError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to update the widget")
@@ -101,7 +101,7 @@ func ReorderWidgets(c *gin.Context) {
 		return
 	}
 	for index, widgetID := range req.WidgetIDs {
-		db.DB.Model(&models.Widget{}).Where("id =?AND page_id = ?", widgetID, pageID).Update("Position", index)
+		db.DB.Model(&models.Widget{}).Where("id = ? AND page_id = ?", widgetID, pageID).Update("Position", index)
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "reordered"})
 

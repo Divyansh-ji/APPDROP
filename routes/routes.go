@@ -11,6 +11,7 @@ func RegisterRoutes(r *gin.Engine) {
 	r.POST("/pages", handlers.CreatePages)
 	r.GET("/pages", handlers.GetPages)
 	r.GET("/pages/:id", handlers.GetPageByID)
+	r.PUT("/pages/:id", handlers.UpdatePage)
 	r.DELETE("/pages/:id", handlers.DeletePage)
 
 	// Widgets
