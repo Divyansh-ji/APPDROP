@@ -45,18 +45,18 @@ Server runs at **http://localhost:8082**.
 
 ## API overview
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check |
-| POST | `/pages` | Create a page |
-| GET | `/pages` | List all pages |
-| GET | `/pages/:id` | Get page by ID |
-| DELETE | `/pages/:id` | Delete a page (cannot delete home page) |
-| POST | `/pages/:id/widgets` | Add widget to a page |
-| PUT | `/widgets/:id` | Update a widget |
-| DELETE | `/widgets/:id` | Delete a widget |
-| PUT | `/pages/:id` | Update a page |
-| POST | `/pages/:id/widgets/reorder` | Reorder widgets |
+| Method | Path                         | Description                             |
+| ------ | ---------------------------- | --------------------------------------- |
+| GET    | `/health`                    | Health check                            |
+| POST   | `/pages`                     | Create a page                           |
+| GET    | `/pages`                     | List all pages                          |
+| GET    | `/pages/:id`                 | Get page by ID                          |
+| DELETE | `/pages/:id`                 | Delete a page (cannot delete home page) |
+| POST   | `/pages/:id/widgets`         | Add widget to a page                    |
+| PUT    | `/widgets/:id`               | Update a widget                         |
+| DELETE | `/widgets/:id`               | Delete a widget                         |
+| PUT    | `/pages/:id`                 | Update a page                           |
+| POST   | `/pages/:id/widgets/reorder` | Reorder widgets                         |
 
 **Widget types:** `banner`, `product_grid`, `text`, `image`, `spacer`
 
