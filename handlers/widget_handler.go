@@ -9,14 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-var allowedWidgetTypes = map[string]bool{
-	"banner":       true,
-	"product_grid": true,
-	"text":         true,
-	"image":        true,
-	"spacer":       true,
-}
-
 func AddWidget(c *gin.Context) {
 	pageID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -30,7 +22,7 @@ func AddWidget(c *gin.Context) {
 		return
 	}
 
-	if !allowedWidgetTypes[widget.Type] {
+	if !IsAllowedWidgetType(widget.Type) {
 		RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid widget type")
 		return
 	}
@@ -60,7 +52,7 @@ func UpdateWidget(c *gin.Context) {
 		return
 	}
 
-	if !allowedWidgetTypes[widget.Type] {
+	if !IsAllowedWidgetType(widget.Type) {
 		RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid widget type")
 		return
 	}

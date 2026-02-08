@@ -4,6 +4,7 @@ import (
 	"APPDROP/db"
 	"APPDROP/models"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -48,14 +49,52 @@ func CreatePages(c *gin.Context) {
 }
 
 func GetPages(c *gin.Context) {
-	var pages []models.Page
+	pageParam := c.Query("page")
+	limitParam := c.Query("limit")
 
-	if err := db.DB.Find(&pages).Error; err != nil {
-		RespondError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to fetch pages")
+	if pageParam == "" && limitParam == "" {
+		var pages []models.Page
+		if err := db.DB.Find(&pages).Error; err != nil {
+			RespondError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to fetch pages")
+			return
+		}
+		c.JSON(http.StatusOK, pages)
 		return
 	}
 
-	c.JSON(http.StatusOK, pages)
+	page := 1
+	limit := 10
+	if p := pageParam; p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+	if l := limitParam; l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limit = parsed
+			if limit > 100 {
+				limit = 100
+			}
+		}
+	}
+	offset := (page - 1) * limit
+
+	var total int64
+	if err := db.DB.Model(&models.Page{}).Count(&total).Error; err != nil {
+		RespondError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to count pages")
+		return
+	}
+	var pages []models.Page
+	if err := db.DB.Order("created_at ASC").Offset(offset).Limit(limit).Find(&pages).Error; err != nil {
+		RespondError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to fetch pages")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"data":  pages,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	})
 }
 
 func GetPageByID(c *gin.Context) {
@@ -67,8 +106,21 @@ func GetPageByID(c *gin.Context) {
 		return
 	}
 
+	widgetTypeFilter := c.Query("widget_type")
+
+	if widgetTypeFilter != "" && !IsAllowedWidgetType(widgetTypeFilter) {
+		RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid widget_type filter")
+		return
+	}
+
 	var page models.Page
-	if err := db.DB.Preload("Widgets").First(&page, "id = ?", pageID).Error; err != nil {
+	query := db.DB
+	if widgetTypeFilter != "" {
+		query = query.Preload("Widgets", "type = ?", widgetTypeFilter)
+	} else {
+		query = query.Preload("Widgets")
+	}
+	if err := query.First(&page, "id = ?", pageID).Error; err != nil {
 		RespondError(c, http.StatusNotFound, "NOT_FOUND", "Page not found")
 		return
 	}
