@@ -58,6 +58,9 @@ Server runs at **http://localhost:8082**.
 | PUT    | `/pages/:id`                 | Update a page                           |
 | POST   | `/pages/:id/widgets/reorder` | Reorder widgets                         |
 
+- **GET /pages** – Optional query: `?page=1&limit=10`. With params: returns `{ "data": [...], "total", "page", "limit" }`. Without params: returns a plain array of all pages (defaults: page=1, limit=10, max limit=100).
+- **GET /pages/:id** – Optional query: `?widget_type=banner` to return only widgets of that type.
+
 **Widget types:** `banner`, `product_grid`, `text`, `image`, `spacer`
 
 ## Example API requests
@@ -73,11 +76,17 @@ curl -s -X POST http://localhost:8082/pages \
   -H "Content-Type: application/json" \
   -d '{"name": "Home", "route": "/home", "is_home": true}'
 
-# List all pages
+# List all pages (plain array)
 curl -s http://localhost:8082/pages
+
+# List pages with pagination (returns { data, total, page, limit })
+curl -s "http://localhost:8082/pages?page=1&limit=10"
 
 # Get single page with its widgets
 curl -s http://localhost:8082/pages/PAGE_ID
+
+# Get page with only widgets of a given type (e.g. banner)
+curl -s "http://localhost:8082/pages/PAGE_ID?widget_type=banner"
 
 # Update a page
 curl -s -X PUT http://localhost:8082/pages/PAGE_ID \
