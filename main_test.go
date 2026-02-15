@@ -40,7 +40,7 @@ func testBrandAndCookie(t *testing.T, r *gin.Engine) (domain, cookie string) {
 		t.Fatalf("create brand: got status %d", w.Code)
 	}
 
-	loginBody := `{"email":"u@test.com","password":"admin123"}`
+	loginBody := `{"email":"test@testbrand.com","password":"secret"}`
 	loginReq := httptest.NewRequest(http.MethodPost, "/login", bytes.NewBufferString(loginBody))
 	loginReq.Header.Set("Content-Type", "application/json")
 	loginReq.Header.Set("X-Brand-Domain", domain)

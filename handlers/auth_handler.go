@@ -5,9 +5,9 @@ import (
 	"APPDROP/db"
 	"APPDROP/models"
 	"net/http"
-	"os"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type LoginRequest struct {
@@ -38,11 +38,13 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	expectPass := os.Getenv("LOGIN_PASSWORD")
-	if expectPass == "" {
-		expectPass = "admin123"
+	if req.Email != brand.Email {
+		RespondError(c, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid credentials")
+		return
 	}
-	if req.Password != expectPass {
+
+	// Verify password against the stored hash
+	if err := bcrypt.CompareHashAndPassword([]byte(brand.PasswordHash), []byte(req.Password)); err != nil {
 		RespondError(c, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid credentials")
 		return
 	}
