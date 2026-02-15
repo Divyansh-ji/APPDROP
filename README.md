@@ -47,12 +47,12 @@ A Go API for managing pages and widgets, built with [Gin](https://gin-gonic.com/
 go run main.go
 ```
 
-Server runs at **http://localhost:8082**.
+Server runs at **http://localhost:8090**.
 
 ## Multi-tenant flow (brands + auth)
 
 - **Public:** `GET /health`, `POST /brands` — no brand or auth.
-- **Brand-scoped:** All other routes need the current brand. Send **`X-Brand-Domain: <domain>`** (e.g. `acme`) on every request, or use a subdomain (e.g. `acme.localhost:8082`).
+- **Brand-scoped:** All other routes need the current brand. Send **`X-Brand-Domain: <domain>`** (e.g. `acme`) on every request, or use a subdomain (e.g. `acme.localhost:8090`).
 - **Login:** `POST /login` with brand domain and password → server sets an **HTTP-only session cookie**. Use the same `X-Brand-Domain` and send the cookie on subsequent requests (Postman/browser do this automatically).
 - **Protected:** Pages, widgets, `GET /brands/me`, `GET /brands/:id` require a valid session (cookie) and that the token’s brand matches the request’s brand.
 
@@ -83,31 +83,31 @@ Server runs at **http://localhost:8082**.
 
 ## Quick run-through (local)
 
-Run these in order. Base URL: `http://localhost:8082`. Use `-c cookies.txt` to save the session cookie and `-b cookies.txt` to send it. If "brand domain already exists", skip step 2 and use that domain (e.g. `acme`) in steps 3–5.
+Run these in order. Base URL: `http://localhost:8090`. Use `-c cookies.txt` to save the session cookie and `-b cookies.txt` to send it. If "brand domain already exists", skip step 2 and use that domain (e.g. `acme`) in steps 3–5.
 
 ```bash
 # 1. Health
-curl -s http://localhost:8082/health
+curl -s http://localhost:8090/health
 
 # 2. Create a brand (public; include email and password)
-curl -s -X POST http://localhost:8082/brands \
+curl -s -X POST http://localhost:8090/brands \
   -H "Content-Type: application/json" \
   -d '{"name":"Acme Store","logo":"https://example.com/logo.png","office_address":"123 Main St","domain":"acme","email":"admin@acme.com","password":"secret123"}'
 
 # 3. Login (use X-Brand-Domain; cookie is set in response)
-curl -s -c cookies.txt -X POST http://localhost:8082/login \
+curl -s -c cookies.txt -X POST http://localhost:8090/login \
   -H "Content-Type: application/json" \
   -H "X-Brand-Domain: acme" \
   -d '{"email":"test@example.com","password":"admin123"}'
 
 # 4. Create a page (send cookie + X-Brand-Domain)
-curl -s -b cookies.txt -X POST http://localhost:8082/pages \
+curl -s -b cookies.txt -X POST http://localhost:8090/pages \
   -H "Content-Type: application/json" \
   -H "X-Brand-Domain: acme" \
   -d '{"name":"Home","route":"/home","is_home":true}'
 
 # 5. List pages (use PAGE_ID from step 4 if needed for other calls)
-curl -s -b cookies.txt http://localhost:8082/pages \
+curl -s -b cookies.txt http://localhost:8090/pages \
   -H "X-Brand-Domain: acme"
 ```
 If step 4 fails with "duplicate key" or "route already exists", use a different `route` (e.g. `"/about"`) in the create-page payload.
@@ -120,28 +120,28 @@ For protected routes, include **`X-Brand-Domain: acme`** and send the session co
 
 ```bash
 # Get current brand
-curl -s -b cookies.txt http://localhost:8082/brands/me -H "X-Brand-Domain: acme"
+curl -s -b cookies.txt http://localhost:8090/brands/me -H "X-Brand-Domain: acme"
 
 # List pages with pagination
-curl -s -b cookies.txt "http://localhost:8082/pages?page=1&limit=10" -H "X-Brand-Domain: acme"
+curl -s -b cookies.txt "http://localhost:8090/pages?page=1&limit=10" -H "X-Brand-Domain: acme"
 
 # Get page with widgets
-curl -s -b cookies.txt "http://localhost:8082/pages/PAGE_ID" -H "X-Brand-Domain: acme"
+curl -s -b cookies.txt "http://localhost:8090/pages/PAGE_ID" -H "X-Brand-Domain: acme"
 
 # Add widget
-curl -s -b cookies.txt -X POST http://localhost:8082/pages/PAGE_ID/widgets \
+curl -s -b cookies.txt -X POST http://localhost:8090/pages/PAGE_ID/widgets \
   -H "Content-Type: application/json" \
   -H "X-Brand-Domain: acme" \
   -d '{"type":"banner","position":0,"config":{"title":"Welcome"}}'
 
 # Update page
-curl -s -b cookies.txt -X PUT http://localhost:8082/pages/PAGE_ID \
+curl -s -b cookies.txt -X PUT http://localhost:8090/pages/PAGE_ID \
   -H "Content-Type: application/json" \
   -H "X-Brand-Domain: acme" \
   -d '{"name":"Home Updated","route":"/home"}'
 
 # Logout
-curl -s -b cookies.txt -X POST http://localhost:8082/logout -H "X-Brand-Domain: acme"
+curl -s -b cookies.txt -X POST http://localhost:8090/logout -H "X-Brand-Domain: acme"
 ```
 
 ## Tests
