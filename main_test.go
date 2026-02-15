@@ -5,10 +5,13 @@ import (
 	"APPDROP/routes"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -17,11 +20,45 @@ import (
 func testRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
 	routes.RegisterRoutes(r)
 	return r
+}
+
+func testBrandAndCookie(t *testing.T, r *gin.Engine) (domain, cookie string) {
+	t.Helper()
+	if db.DB == nil {
+		t.Skip("DATABASE_URL not set, skipping test that requires brand and auth")
+	}
+	domain = "testbrand"
+
+	body := `{"name":"Test Brand","domain":"testbrand","email":"test@testbrand.com","password":"secret","office_address":"","logo":""}`
+	req := httptest.NewRequest(http.MethodPost, "/brands", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated && w.Code != http.StatusConflict {
+		t.Fatalf("create brand: got status %d", w.Code)
+	}
+
+	loginBody := `{"email":"u@test.com","password":"admin123"}`
+	loginReq := httptest.NewRequest(http.MethodPost, "/login", bytes.NewBufferString(loginBody))
+	loginReq.Header.Set("Content-Type", "application/json")
+	loginReq.Header.Set("X-Brand-Domain", domain)
+	loginW := httptest.NewRecorder()
+	r.ServeHTTP(loginW, loginReq)
+	if loginW.Code != http.StatusOK {
+		t.Fatalf("login: got status %d, body %s", loginW.Code, loginW.Body.String())
+	}
+	setCookie := loginW.Header().Get("Set-Cookie")
+	if setCookie == "" {
+		t.Fatal("login did not return Set-Cookie")
+	}
+	if idx := strings.Index(setCookie, ";"); idx != -1 {
+		cookie = strings.TrimSpace(setCookie[:idx])
+	} else {
+		cookie = setCookie
+	}
+	return domain, cookie
 }
 
 func TestHealth(t *testing.T) {
@@ -44,7 +81,10 @@ func TestHealth(t *testing.T) {
 
 func TestGetPageByID_InvalidUUID(t *testing.T) {
 	r := testRouter()
+	domain, cookie := testBrandAndCookie(t, r)
 	req := httptest.NewRequest(http.MethodGet, "/pages/not-a-uuid", nil)
+	req.Header.Set("X-Brand-Domain", domain)
+	req.Header.Set("Cookie", cookie)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -55,6 +95,7 @@ func TestGetPageByID_InvalidUUID(t *testing.T) {
 
 func TestCreatePage_ValidationErrors(t *testing.T) {
 	r := testRouter()
+	domain, cookie := testBrandAndCookie(t, r)
 
 	tests := []struct {
 		name string
@@ -69,6 +110,8 @@ func TestCreatePage_ValidationErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/pages", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("X-Brand-Domain", domain)
+			req.Header.Set("Cookie", cookie)
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, req)
 			if w.Code != tt.want {
@@ -80,9 +123,12 @@ func TestCreatePage_ValidationErrors(t *testing.T) {
 
 func TestAddWidget_InvalidPageID(t *testing.T) {
 	r := testRouter()
+	domain, cookie := testBrandAndCookie(t, r)
 	body := `{"type": "banner", "position": 0}`
 	req := httptest.NewRequest(http.MethodPost, "/pages/not-a-uuid/widgets", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Brand-Domain", domain)
+	req.Header.Set("Cookie", cookie)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -92,18 +138,19 @@ func TestAddWidget_InvalidPageID(t *testing.T) {
 }
 
 func TestAddWidget_InvalidType(t *testing.T) {
-	if db.DB == nil {
-		t.Skip("DATABASE_URL not set, skipping DB test")
-	}
-	// Create a page first so we have a valid page ID (we need DB)
 	r := testRouter()
-	pageBody := `{"name": "Test Page", "route": "/test-widget-validation", "is_home": false}`
+	domain, cookie := testBrandAndCookie(t, r)
+	// Create a page first so we have a valid page ID (unique route to avoid 409 on re-runs)
+	route := fmt.Sprintf("/test-widget-%d", time.Now().UnixNano())
+	pageBody := fmt.Sprintf(`{"name": "Test Page", "route": "%s", "is_home": false}`, route)
 	createReq := httptest.NewRequest(http.MethodPost, "/pages", bytes.NewBufferString(pageBody))
 	createReq.Header.Set("Content-Type", "application/json")
+	createReq.Header.Set("X-Brand-Domain", domain)
+	createReq.Header.Set("Cookie", cookie)
 	createW := httptest.NewRecorder()
 	r.ServeHTTP(createW, createReq)
 	if createW.Code != http.StatusCreated {
-		t.Skipf("could not create test page: %d", createW.Code)
+		t.Fatalf("could not create test page: got %d", createW.Code)
 	}
 	var page struct {
 		ID string `json:"id"`
@@ -112,10 +159,11 @@ func TestAddWidget_InvalidType(t *testing.T) {
 		t.Fatalf("parse page: %v", err)
 	}
 
-	// Invalid widget type
 	widgetBody := `{"type": "invalid_type", "position": 0}`
 	req := httptest.NewRequest(http.MethodPost, "/pages/"+page.ID+"/widgets", bytes.NewBufferString(widgetBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Brand-Domain", domain)
+	req.Header.Set("Cookie", cookie)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -125,18 +173,18 @@ func TestAddWidget_InvalidType(t *testing.T) {
 }
 
 func TestGetPages_RequiresDB(t *testing.T) {
-	if db.DB == nil {
-		t.Skip("DATABASE_URL not set, skipping DB test")
-	}
 	r := testRouter()
+	domain, cookie := testBrandAndCookie(t, r)
 	req := httptest.NewRequest(http.MethodGet, "/pages", nil)
+	req.Header.Set("X-Brand-Domain", domain)
+	req.Header.Set("Cookie", cookie)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("GET /pages: got status %d, want %d", w.Code, http.StatusOK)
 	}
-	// Response should be a JSON array
+
 	var pages []interface{}
 	if err := json.Unmarshal(w.Body.Bytes(), &pages); err != nil {
 		t.Errorf("GET /pages: invalid JSON array: %v", err)

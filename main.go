@@ -16,12 +16,8 @@ func main() {
 
 	r.Use(middlewares.RequestLogger())
 
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
-
 	routes.RegisterRoutes(r)
 
-	log.Println(" Server running on port 8082")
-	r.Run(":8082")
+	log.Println("Server running on port 8090")
+	r.Run(":8090")
 }

@@ -10,25 +10,31 @@ import (
 )
 
 func AddWidget(c *gin.Context) {
+	brandID, ok := getBrandID(c)
+	if !ok {
+		RespondError(c, http.StatusNotFound, "NOT_FOUND", "Brand not found for this domain")
+		return
+	}
 	pageID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid page ID")
 		return
 	}
-
+	var page models.Page
+	if err := db.DB.Where("id = ? AND brand_id = ?", pageID, brandID).First(&page).Error; err != nil {
+		RespondError(c, http.StatusNotFound, "NOT_FOUND", "Page not found")
+		return
+	}
 	var widget models.Widget
 	if err := c.ShouldBindJSON(&widget); err != nil {
 		RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid request body")
 		return
 	}
-
 	if !IsAllowedWidgetType(widget.Type) {
 		RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid widget type")
 		return
 	}
-
 	widget.PageID = pageID
-
 	if err := db.DB.Create(&widget).Error; err != nil {
 		RespondError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to create widget")
 		return
@@ -36,15 +42,24 @@ func AddWidget(c *gin.Context) {
 	c.JSON(http.StatusCreated, widget)
 }
 func UpdateWidget(c *gin.Context) {
+	brandID, ok := getBrandID(c)
+	if !ok {
+		RespondError(c, http.StatusNotFound, "NOT_FOUND", "Brand not found for this domain")
+		return
+	}
 	widgetID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid Widget ID")
 		return
 	}
-
 	var widget models.Widget
 	if err := db.DB.First(&widget, "id = ?", widgetID).Error; err != nil {
 		RespondError(c, http.StatusNotFound, "NOT_FOUND", "Widget not found")
+		return
+	}
+	var page models.Page
+	if err := db.DB.Where("id = ? AND brand_id = ?", widget.PageID, brandID).First(&page).Error; err != nil {
+		RespondError(c, http.StatusNotFound, "NOT_FOUND", "Page not found")
 		return
 	}
 	if err := c.ShouldBindJSON(&widget); err != nil {
@@ -63,12 +78,26 @@ func UpdateWidget(c *gin.Context) {
 	c.JSON(http.StatusOK, widget)
 }
 func DeleteWidget(c *gin.Context) {
+	brandID, ok := getBrandID(c)
+	if !ok {
+		RespondError(c, http.StatusNotFound, "NOT_FOUND", "Brand not found for this domain")
+		return
+	}
 	widgetID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid widget ID")
 		return
 	}
-
+	var widget models.Widget
+	if err := db.DB.First(&widget, "id = ?", widgetID).Error; err != nil {
+		RespondError(c, http.StatusNotFound, "NOT_FOUND", "Widget not found")
+		return
+	}
+	var page models.Page
+	if err := db.DB.Where("id = ? AND brand_id = ?", widget.PageID, brandID).First(&page).Error; err != nil {
+		RespondError(c, http.StatusNotFound, "NOT_FOUND", "Page not found")
+		return
+	}
 	if err := db.DB.Delete(&models.Widget{}, "id = ?", widgetID).Error; err != nil {
 		RespondError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to delete widget")
 		return
@@ -82,9 +111,19 @@ type ReorderRequest struct {
 }
 
 func ReorderWidgets(c *gin.Context) {
+	brandID, ok := getBrandID(c)
+	if !ok {
+		RespondError(c, http.StatusNotFound, "NOT_FOUND", "Brand not found for this domain")
+		return
+	}
 	pageID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid page ID")
+		return
+	}
+	var page models.Page
+	if err := db.DB.Where("id = ? AND brand_id = ?", pageID, brandID).First(&page).Error; err != nil {
+		RespondError(c, http.StatusNotFound, "NOT_FOUND", "Page not found")
 		return
 	}
 	var req ReorderRequest
@@ -100,14 +139,18 @@ func ReorderWidgets(c *gin.Context) {
 }
 
 func DeletePage(c *gin.Context) {
+	brandID, ok := getBrandID(c)
+	if !ok {
+		RespondError(c, http.StatusNotFound, "NOT_FOUND", "Brand not found for this domain")
+		return
+	}
 	pageID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid page ID")
 		return
 	}
-
 	var page models.Page
-	if err := db.DB.First(&page, "id = ?", pageID).Error; err != nil {
+	if err := db.DB.Where("brand_id = ?", brandID).First(&page, "id = ?", pageID).Error; err != nil {
 		RespondError(c, http.StatusNotFound, "NOT_FOUND", "Page not found")
 		return
 	}

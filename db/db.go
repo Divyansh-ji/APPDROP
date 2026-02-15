@@ -4,6 +4,8 @@ import (
 	"log"
 	"os"
 
+	"APPDROP/models"
+
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -29,4 +31,20 @@ func Connect() {
 
 	DB = database
 	log.Println("Connected to PostgreSQL")
+
+	_ = DB.Exec(`ALTER TABLE pages DROP CONSTRAINT IF EXISTS pages_route_key`).Error
+	_ = DB.Exec(`ALTER TABLE pages DROP CONSTRAINT IF EXISTS uni_pages_route`).Error
+	_ = DB.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_pages_brand_route ON pages(brand_id, route)`).Error
+
+	if err := DB.AutoMigrate(&models.Page{}, &models.Widget{}); err != nil {
+		log.Println("Failed to migrate Pages/Widgets:", err)
+	}
+
+	if err := DB.Exec(`ALTER TABLE brands ADD COLUMN IF NOT EXISTS email text;`).Error; err != nil {
+		log.Println("Failed to add email column:", err)
+	}
+
+	if err := DB.Exec(`ALTER TABLE brands ADD COLUMN IF NOT EXISTS password_hash text;`).Error; err != nil {
+		log.Println("Failed to add password_hash column:", err)
+	}
 }
