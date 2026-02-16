@@ -51,7 +51,7 @@ Server runs at **http://localhost:8090**.
 ## Multi-tenant flow (brands + auth)
 
 - **Public:** `GET /health`, `POST /brands` — no brand or auth.
-- **Brand-scoped:** All other routes need the current brand. Send **`X-Brand-Domain: <domain>`** (e.g. `demo`) on every request, or use a subdomain (e.g. `demo.localhost:8090`).
+- **Brand-scoped:** All other routes need the current brand. Send **`X-Brand-Domain: <domain>`** (e.g. `interview`) on every request, or use a subdomain (e.g. `interview.localhost:8090`).
 - **Login:** `POST /login` with brand domain and password → server sets an **HTTP-only session cookie**. Use the same `X-Brand-Domain` and send the cookie on subsequent requests (Postman/browser do this automatically).
 - **Protected:** Pages, widgets, `GET /brands/me`, `GET /brands/:id` require a valid session (cookie) and that the token’s brand matches the request’s brand.
 
@@ -82,7 +82,7 @@ Server runs at **http://localhost:8090**.
 
 ## Quick run-through (local)
 
-Run these in order. Base URL: `http://localhost:8090`. Use `-c cookies.txt` to save the session cookie and `-b cookies.txt` to send it. If "brand domain already exists", skip step 2 and use that domain (e.g. `demo`) in steps 3–5.
+Run these in order. Base URL: `http://localhost:8090`. Use `-c cookies.txt` to save the session cookie and `-b cookies.txt` to send it. If "brand domain already exists", skip step 2 and use that domain (e.g. `interview`) in steps 3–5.
 
 ```bash
 # 1. Health
@@ -91,23 +91,23 @@ curl -s http://localhost:8090/health
 # 2. Create a brand (public; include email and password)
 curl -s -X POST http://localhost:8090/brands \
   -H "Content-Type: application/json" \
-  -d '{"name":"Demo Store","logo":"https://example.com/logo.png","office_address":"123 Main St","domain":"demo","email":"admin@demo.com","password":"demosecret"}'
+  -d '{"name":"Interview Store","logo":"https://example.com/interview-logo.png","office_address":"456 Demo Ave","domain":"interview","email":"admin@interview.com","password":"interview123"}'
 
 # 3. Login (use X-Brand-Domain; cookie is set in response)
 curl -s -c cookies.txt -X POST http://localhost:8090/login \
   -H "Content-Type: application/json" \
-  -H "X-Brand-Domain: demo" \
-  -d '{"email":"admin@demo.com","password":"demosecret"}'
+  -H "X-Brand-Domain: interview" \
+  -d '{"email":"admin@interview.com","password":"interview123"}'
 
 # 4. Create a page (send cookie + X-Brand-Domain)
 curl -s -b cookies.txt -X POST http://localhost:8090/pages \
   -H "Content-Type: application/json" \
-  -H "X-Brand-Domain: demo" \
+  -H "X-Brand-Domain: interview" \
   -d '{"name":"Home","route":"/home","is_home":true}'
 
 # 5. List pages (use PAGE_ID from step 4 if needed for other calls)
 curl -s -b cookies.txt http://localhost:8090/pages \
-  -H "X-Brand-Domain: demo"
+  -H "X-Brand-Domain: interview"
 ```
 If step 4 fails with "duplicate key" or "route already exists", use a different `route` (e.g. `"/about"`) in the create-page payload.
 
@@ -115,32 +115,38 @@ Replace `PAGE_ID` and `WIDGET_ID` in the examples below with IDs from responses.
 
 ## Example API requests (with brand + auth)
 
-For protected routes, include **`X-Brand-Domain: demo`** and send the session cookie (e.g. `-b cookies.txt` in curl, or use Postman’s cookie handling).
+For protected routes, include **`X-Brand-Domain: interview`** and send the session cookie (e.g. `-b cookies.txt` in curl, or use Postman’s cookie handling).
 
 ```bash
 # Get current brand
-curl -s -b cookies.txt http://localhost:8090/brands/me -H "X-Brand-Domain: demo"
+curl -s -b cookies.txt http://localhost:8090/brands/me -H "X-Brand-Domain: interview"
 
 # List pages with pagination
-curl -s -b cookies.txt "http://localhost:8090/pages?page=1&limit=10" -H "X-Brand-Domain: demo"
+curl -s -b cookies.txt "http://localhost:8090/pages?page=1&limit=10" -H "X-Brand-Domain: interview"
 
 # Get page with widgets
-curl -s -b cookies.txt "http://localhost:8090/pages/PAGE_ID" -H "X-Brand-Domain: demo"
+curl -s -b cookies.txt "http://localhost:8090/pages/PAGE_ID" -H "X-Brand-Domain: interview"
 
 # Add widget
 curl -s -b cookies.txt -X POST http://localhost:8090/pages/PAGE_ID/widgets \
   -H "Content-Type: application/json" \
-  -H "X-Brand-Domain: demo" \
+  -H "X-Brand-Domain: interview" \
   -d '{"type":"banner","position":0,"config":{"title":"Welcome"}}'
+
+# Update widget
+curl -s -b cookies.txt -X PUT http://localhost:8090/widgets/WIDGET_ID \
+  -H "Content-Type: application/json" \
+  -H "X-Brand-Domain: interview" \
+  -d '{"type":"banner","position":0,"config":{"title":"Updated"}}'
 
 # Update page
 curl -s -b cookies.txt -X PUT http://localhost:8090/pages/PAGE_ID \
   -H "Content-Type: application/json" \
-  -H "X-Brand-Domain: demo" \
+  -H "X-Brand-Domain: interview" \
   -d '{"name":"Home Updated","route":"/home"}'
 
 # Logout
-curl -s -b cookies.txt -X POST http://localhost:8090/logout -H "X-Brand-Domain: demo"
+curl -s -b cookies.txt -X POST http://localhost:8090/logout -H "X-Brand-Domain: interview"
 ```
 
 ## Tests

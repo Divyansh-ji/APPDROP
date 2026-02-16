@@ -43,7 +43,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Verify password against the stored hash
+
 	if err := bcrypt.CompareHashAndPassword([]byte(brand.PasswordHash), []byte(req.Password)); err != nil {
 		RespondError(c, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid credentials")
 		return
